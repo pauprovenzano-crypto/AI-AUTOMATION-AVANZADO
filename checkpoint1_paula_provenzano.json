@@ -1,0 +1,346 @@
+{
+  "name": "checkpoint1_paula_provenzano",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        48,
+        16
+      ],
+      "id": "18aadb38-b07d-4edf-92a6-8edd6baeee32",
+      "name": "When chat message received",
+      "webhookId": "223907be-8ea3-4714-9bd1-7cca4247c5b8"
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=ROL\nSos el asistente de turnos de la agencia. Respondés las consultas de los promotores sobre sus jornadas de trabajo de forma cordial, clara y breve, en español.\n\nFECHA ACTUAL\nHoy es {{ $now.setZone('America/Argentina/Buenos_Aires').setLocale('es').toFormat(\"cccc d 'de' LLLL 'de' yyyy\") }} (ISO: {{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('yyyy-MM-dd') }}).\nUsá esta fecha para interpretar \"hoy\", \"mañana\", \"esta semana\", \"este mes\", \"el mes que viene\", etc.\n\nALCANCE\nSolo respondés sobre: días trabajados, próximas jornadas, horarios, lugar o dirección de trabajo y uniforme.\nPara cualquier otro tema respondé: \"Lo siento, solo puedo responder consultas sobre tus jornadas, horarios, lugar de trabajo y uniforme. Para otras consultas, comunicate con tu supervisor.\"\n\nHERRAMIENTA\nTenés la herramienta \"Buscar jornadas en Airtable\". Necesita:\n- nombre_promotor: nombre y apellido tal como lo escribió el promotor.\n- fecha_desde y fecha_hasta: rango de fechas en formato YYYY-MM-DD.\n\nCómo armar el rango:\n- \"octubre\" o \"este mes\" (si estamos en octubre de 2026): 2026-10-01 a 2026-10-31.\n- \"esta semana\": del lunes al domingo de la semana actual.\n- \"mi próximo turno\": desde hoy hasta 60 días después.\n- \"qué días trabajé\": desde el día 1 del mes actual hasta hoy.\n\nAnte cualquier consulta sobre jornadas, SIEMPRE llamá a la herramienta antes de responder. Nunca respondas de memoria ni a partir de mensajes anteriores de la conversación: los datos pueden haber cambiado.\nSi el promotor no dio su nombre y apellido, pedíselos antes de buscar.\n\nCÓMO LEER EL RESULTADO\n- Sin resultados: respondé \"No encuentro jornadas a tu nombre para ese período. Si creés que es un error, comunicate con tu supervisor.\"\n- Todas las filas con el mismo \"Nombre promotor\": son las jornadas de esa persona. Respondé con ellas.\n- Filas con distintos \"Nombre promotor\" (por ejemplo, dos personas con el mismo nombre): no elijas ni mezcles. Pedí el apellido completo.\n\nQUÉ PODÉS COMPARTIR\nSolo día y fecha, horario, lugar, dirección, zona, uniforme y situación (Trabajada / Hoy / Pendiente). Nunca compartas datos de otros promotores, identificadores internos, teléfonos ni mails.\n\nFORMATO DE SALIDA\nTu salida tiene dos partes, y el sistema las separa:\n\n1) respuesta.mensaje: el único texto que ve el promotor.\nSaludá por el nombre y listá las jornadas en orden cronológico, una por línea. Por ejemplo:\n\"Hola Camila, estas son tus jornadas de octubre:\n• Lunes 06/10 · 10 a 16 h · Nombre del lugar (dirección) · Uniforme: nombre del uniforme\"\nSi el lugar o el uniforme se repiten en todas las jornadas, podés mencionarlos una sola vez al final. Sin emojis. Nunca menciones el reporte dentro del mensaje.\n\n2) reporte_interaccion: registro interno para el administrador, que el promotor nunca ve.\n- usuario_promotor: nombre del promotor identificado, o \"Sin identificar\".\n- tipo_consulta: breve, por ejemplo \"Jornadas del mes\", \"Próximo turno\", \"Lugar de trabajo\", \"Uniforme\", \"Fuera de alcance\".\n- herramientas_utilizadas: [\"Airtable\"] solo si la herramienta se ejecutó en este turno; si no, [].\n- estado_solicitud: uno de \"Resuelto\", \"No encontrado\", \"Fuera de alcance\", \"Identificación requerida\", \"Identificación ambigua\", \"Error de herramienta\".\n- detalle_breve: qué pasó, en una o dos líneas, de forma factual.\n- limitaciones: limitaciones reales encontradas, o \"Ninguna\".\nNo declares \"Resuelto\" si la consulta no se resolvió, ni que usaste una herramienta que no se ejecutó.\n\nPRINCIPIO\nIdentificar → consultar la herramienta → responder solo con lo que devolvió. Nunca inventes jornadas, lugares, horarios ni uniformes.",
+          "maxIterations": 8
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        320,
+        16
+      ],
+      "id": "438a108d-1db6-4cc3-8756-0d4d70c0c99c",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "sendTo": "pauprovenzano@gmail.com",
+        "subject": "=Reporte chatbot · {{ $json.output.reporte_interaccion.estado_solicitud }} · {{ $json.output.reporte_interaccion.usuario_promotor ?? 'Sin identificar' }}",
+        "message": "=<div style=\"font-family: Georgia, serif; color:#222; max-width:560px;\">\n<p style=\"font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:#888; margin:0 0 12px;\">Reporte de interacción · {{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('dd/MM/yyyy HH:mm') }}</p>\n<table style=\"border-collapse:collapse; width:100%; font-size:14px;\">\n<tr><td style=\"padding:6px 12px 6px 0; color:#888; vertical-align:top;\">Promotor</td><td style=\"padding:6px 0;\">{{ $json.output.reporte_interaccion.usuario_promotor ?? 'Sin identificar' }}</td></tr>\n<tr><td style=\"padding:6px 12px 6px 0; color:#888; vertical-align:top;\">Consulta</td><td style=\"padding:6px 0;\">{{ $json.output.reporte_interaccion.tipo_consulta }}</td></tr>\n<tr><td style=\"padding:6px 12px 6px 0; color:#888; vertical-align:top;\">Estado</td><td style=\"padding:6px 0;\">{{ $json.output.reporte_interaccion.estado_solicitud }}</td></tr>\n<tr><td style=\"padding:6px 12px 6px 0; color:#888; vertical-align:top;\">Herramientas</td><td style=\"padding:6px 0;\">{{ ($json.output.reporte_interaccion.herramientas_utilizadas || []).join(', ') || 'Ninguna' }}</td></tr>\n<tr><td style=\"padding:6px 12px 6px 0; color:#888; vertical-align:top;\">Detalle</td><td style=\"padding:6px 0;\">{{ $json.output.reporte_interaccion.detalle_breve }}</td></tr>\n<tr><td style=\"padding:6px 12px 6px 0; color:#888; vertical-align:top;\">Limitaciones</td><td style=\"padding:6px 0;\">{{ $json.output.reporte_interaccion.limitaciones ?? '—' }}</td></tr>\n</table>\n</div>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        16
+      ],
+      "id": "b85be684-f3f7-4bf2-a75a-9b8f805db2c5",
+      "name": "Enviar reporte por Gmail",
+      "webhookId": "bb5efc74-ab93-4802-9418-5ff4ff97b2bd",
+      "notesInFlow": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CMwi5eBmal17fbZl",
+          "name": "Gmail account 2"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "notes": "Envia un mail de log al administrador."
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Busca las jornadas de trabajo de un promotor en la base de la agencia.\n\nUsala SIEMPRE que un promotor consulte por sus días trabajados, próximas jornadas, horarios, lugar de trabajo o uniforme.\n\nParámetros:\n- nombre_promotor: nombre y apellido tal como lo escribió el promotor (ej: Camila Benitez).\n- fecha_desde / fecha_hasta: rango de fechas a consultar, en formato YYYY-MM-DD, ambos inclusive.\n\nDevuelve una fila por jornada con: Día, Fecha, Hora de inicio, Hora de fin, Lugar, Dirección, Zona, Uniforme (nombre), Uniforme (descripción), Situación y Nombre promotor.\nSi no devuelve filas, no hay jornadas para ese nombre en ese período (o el nombre no coincide).",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appQGJbhbz3yrZCzT"
+        },
+        "table": {
+          "__rl": true,
+          "cachedResultName": "Jornadas",
+          "mode": "id",
+          "value": "tblAx7b0Mh1xITTXm"
+        },
+        "filterByFormula": "=AND(\n  LEN(\"{{ $fromAI('nombre_promotor', 'Nombre y apellido del promotor tal como lo escribio, ej: Camila Benitez', 'string') }}\") > 3,\n  FIND(\n    SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(LOWER(\"{{ $fromAI('nombre_promotor', 'Nombre y apellido del promotor tal como lo escribio, ej: Camila Benitez', 'string') }}\"), \"á\", \"a\"), \"é\", \"e\"), \"í\", \"i\"), \"ó\", \"o\"), \"ú\", \"u\"), \"ü\", \"u\"),\n    SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(LOWER({Nombre promotor} & \"\"), \"á\", \"a\"), \"é\", \"e\"), \"í\", \"i\"), \"ó\", \"o\"), \"ú\", \"u\"), \"ü\", \"u\")\n  ),\n  NOT(IS_BEFORE({Fecha}, DATETIME_PARSE(\"{{ $fromAI('fecha_desde', 'Inicio del rango a consultar, formato YYYY-MM-DD', 'string') }}\", \"YYYY-MM-DD\"))),\n  NOT(IS_AFTER({Fecha}, DATETIME_PARSE(\"{{ $fromAI('fecha_hasta', 'Fin del rango a consultar, formato YYYY-MM-DD, inclusive', 'string') }}\", \"YYYY-MM-DD\"))),\n  {Estado promotor} & \"\" = \"Activo\"\n)",
+        "options": {
+          "fields": [
+            "Día",
+            "Fecha",
+            "Hora de inicio",
+            "Hora de fin",
+            "Lugar",
+            "Dirección",
+            "Zona",
+            "Uniforme (nombre)",
+            "Uniforme (descripción)",
+            "Situación",
+            "Nombre promotor"
+          ]
+        },
+        "sort": {
+          "property": [
+            {
+              "field": "Fecha"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        432,
+        240
+      ],
+      "id": "c695bb7a-a869-4bf4-a88a-0cd2a3cb6c56",
+      "name": "Buscar jornadas en Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "73yJIQMQ7mt28whT",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        224
+      ],
+      "id": "cc467d63-7c08-4999-a1e1-768f863227e5",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "MklieurBXXi4oDmT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"respuesta\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mensaje\": { \"type\": \"string\", \"description\": \"Mensaje final para el promotor\" }\n      },\n      \"required\": [\"mensaje\"]\n    },\n    \"reporte_interaccion\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"usuario_promotor\": { \"type\": \"string\", \"description\": \"Nombre del promotor, o Sin identificar\" },\n        \"tipo_consulta\": { \"type\": \"string\" },\n        \"herramientas_utilizadas\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n        \"estado_solicitud\": { \"type\": \"string\" },\n        \"detalle_breve\": { \"type\": \"string\" },\n        \"limitaciones\": { \"type\": \"string\", \"description\": \"Limitaciones reales, o Ninguna\" }\n      },\n      \"required\": [\"usuario_promotor\", \"tipo_consulta\", \"herramientas_utilizadas\", \"estado_solicitud\", \"detalle_breve\", \"limitaciones\"]\n    }\n  },\n  \"required\": [\"respuesta\", \"reporte_interaccion\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        640,
+        240
+      ],
+      "id": "982d1d61-2e75-43ab-adbb-49bef1b9c8d2",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "resp-mensaje",
+              "name": "output",
+              "type": "string",
+              "value": "={{ $('AI Agent').item.json.output.respuesta.mensaje }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "452bb5b3-3ece-4787-b9af-bfbae2a672dd",
+      "name": "Respuesta al chat",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        960,
+        16
+      ],
+      "notes": "Devuelve al chat solo respuesta.mensaje. Cuando conectes Telegram, este dato es el texto a enviar."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg",
+          "mode": "list",
+          "cachedResultName": "Log error de N8N",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Error",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Error": "={{ $json.error }}",
+            "Solicitud": "={{ $('When chat message received').item.json.chatInput }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Solicitud",
+              "displayName": "Solicitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Error",
+              "displayName": "Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        784,
+        208
+      ],
+      "id": "7d167c29-a054-43b2-8915-04b67eb398dc",
+      "name": "Log error",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XcjATwKF9aykS5FZ",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Enviar reporte por Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar jornadas en Airtable": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar reporte por Gmail": {
+      "main": [
+        [
+          {
+            "node": "Respuesta al chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "versionId": "11364011-5ec7-48f5-a313-a4ac659826d7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "7260c5e180f34b5cab8e39baae43ae9115a18b483b3b239c4e5fa9826c7548db"
+  },
+  "nodeGroups": [],
+  "id": "56OE6kZMwZ7LHK9j",
+  "tags": []
+}
