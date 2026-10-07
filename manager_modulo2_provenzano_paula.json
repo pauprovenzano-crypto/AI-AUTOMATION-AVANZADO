@@ -1,0 +1,981 @@
+{
+  "name": "manager_modulo2_provenzano_paula",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "## ROL\nSos el Manager de una agencia de marketing BTL (Below the line) encargada de brindar servicios de promotores en puntos de venta.\n\nTu función NO es resolver las tareas operativas. Tu responsabilidad es analizar la solicitud del usuario y decidir qué Worker especialista debe resolverla.\n\n## WORKERS DISPONIBLES\n\n### 1. Asistente de turnos\nEspecialista en la planificación laboral de los promotores de la agencia de marketing.\nUsalo cuando el usuario consulte por:\n- Días trabajados\n- Próximas jornadas\n- Horarios de trabajo\n- Lugar de trabajo\n- Uniforme a utilizar\n\n### 2. Liquidación de sueldos\nEspecialista en el pago de salarios de los promotores de la agencia de marketing.\nUsalo cuando el usuario consulte por:\n- Valor de la hora de trabajo\n- Suma total a cobrar por los días trabajados\n- Fecha estimada de pago\n\n## INTENCIONES PERMITIDAS\n\nPara \"Asistente de turnos\":\n- turnos_search\n- turnos_date\n- turnos_location\n- turnos_uniform\n\nPara \"Liquidación de sueldos\":\n- sueldos_search\n- sueldos_price\n- sueldos_date\n\nSi la solicitud no puede ser atendida por ninguno de los Workers disponibles:\n- worker = unsupported\n- intent = No encuentro la información en mi base de daos. Por favor comunicate con un supervisor.\n\n## Formato de Salida JSON\nEste es un ejemplo de JSON\n{\n  \"worker\": \"Asistente de turnos\",\n  \"intent\": \"turnos_search\",\n  \"promotor_id\": \"\",\n  \"promotor_query\": \"Camila Lopez\",\n  \"request\": \"Consultar próximas jornadas\",\n  \"original_input\": \"Hola soy Camila Lopez, quería saber cuántas jornadas de trabajo tengo en octubre?\"\n}\n\n## REGLAS\n\n1. Tu trabajo es exclusivamente interpretar y delegar.\n2. No realices vos mismo consultas de días, lugares o pagos.\n3. Selecciona UN Worker según la intención principal del usuario.\n4. Si no existe promotor_id, devolvé una cadena vacía. Nunca inventes IDs.\n5. Para promotor_query No inventes nombres, apellidos, fechas, lugares, cantidades o valores que no aparezcan en el mensaje original. \n8. request debe ser una instrucción breve, concreta y útil para el Worker.\n9. original_input debe conservar exactamente la intención del mensaje original del usuario.\n10. Tu salida debe respetar estrictamente la estructura solicitada por el Output Parser.",
+          "maxIterations": 8
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -576,
+        384
+      ],
+      "id": "fabdd5a6-a012-4432-8ed3-4c5b78c8cfca",
+      "name": "Manager AI Agent1",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -800,
+        384
+      ],
+      "id": "acde83b4-e680-445c-8066-b89ed65f3367",
+      "name": "When chat message received",
+      "webhookId": "c1e36f74-f9f6-4090-84cc-330d9ad70f4e"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"worker\": \"Asistente de turnos\",\n  \"intent\": \"turnos_search\",\n  \"promotor_id\": \"\",\n  \"promotor_query\": \"Camila Lopez\",\n  \"request\": \"Consultar próximas jornadas\",\n  \"original_input\": \"Hola soy Camila Lopez, quería saber cuántas jornadas de trabajo tengo en octubre?\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -432,
+        704
+      ],
+      "id": "74d8e515-50f0-492a-99b2-60156347dcc3",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.worker }}",
+                    "rightValue": "Asistente de turnos",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "849b84ca-23eb-40a9-9661-6ec2033e225e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Turnos"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a51ea56a-9221-4ee7-a10e-9134156a4337",
+                    "leftValue": "={{ $json.output.worker }}",
+                    "rightValue": "Liquidación de sueldos",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Sueldos"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -224,
+        256
+      ],
+      "id": "53164e28-5016-4a82-a792-6bc4bc7ea8df",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "tFaPEvDhJII5naKp",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/tFaPEvDhJII5naKp",
+          "cachedResultName": "worker1_modulo2_provenzano_paula"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "intent": "={{ $('Manager AI Agent1').item.json.output.intent }}",
+            "request": "={{ $('Manager AI Agent1').item.json.output.request }}",
+            "original_input": "={{ $('Manager AI Agent1').item.json.output.original_input }}",
+            "worker": "={{ $('Manager AI Agent1').item.json.output.worker }}",
+            "promotor_query": "={{ $('Manager AI Agent1').item.json.output.promotor_query }}",
+            "promotor_id": "={{ $('Manager AI Agent1').item.json.output.promotor_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "worker",
+              "displayName": "worker",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "intent",
+              "displayName": "intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "promotor_id",
+              "displayName": "promotor_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "promotor_query",
+              "displayName": "promotor_query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "request",
+              "displayName": "request",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "original_input",
+              "displayName": "original_input",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        80
+      ],
+      "id": "b2338cd7-430e-4c48-a241-273eb9691d85",
+      "name": "Ejecutar worker Asistente de turnos",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -576,
+        608
+      ],
+      "id": "33ca8d3a-acfe-4e70-a120-de50be98137e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "MklieurBXXi4oDmT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "q7JRo4n4f0Blbb69",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/q7JRo4n4f0Blbb69",
+          "cachedResultName": "worker2_modulo2_provenzano_paula"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "intent": "={{ $('Manager AI Agent1').item.json.output.intent }}",
+            "request": "={{ $('Manager AI Agent1').item.json.output.request }}",
+            "original_input": "={{ $('Manager AI Agent1').item.json.output.original_input }}",
+            "worker": "={{ $('Manager AI Agent1').item.json.output.worker }}",
+            "promotor_query": "={{ $('Manager AI Agent1').item.json.output.promotor_query }}",
+            "promotor_id": "={{ $('Manager AI Agent1').item.json.output.promotor_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "worker",
+              "displayName": "worker",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "intent",
+              "displayName": "intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "promotor_id",
+              "displayName": "promotor_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "promotor_query",
+              "displayName": "promotor_query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "request",
+              "displayName": "request",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "original_input",
+              "displayName": "original_input",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        272
+      ],
+      "id": "77200455-c7e0-4e60-8858-372ecb99f71f",
+      "name": "Ejecutar worker Liquidación de sueldos"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg",
+          "mode": "list",
+          "cachedResultName": "Log error de N8N",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "LOG",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('yyyy-MM-dd HH:mm') }}\n",
+            "Workflow Id": "={{ $workflow.name }}\n{{ $workflow.id }}",
+            "Solicitud": "={{ $('When chat message received').item.json.chatInput }}",
+            "Error": "={{ $json.error }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "Workflow Id",
+              "displayName": "Workflow Id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Solicitud",
+              "displayName": "Solicitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Error",
+              "displayName": "Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -224,
+        640
+      ],
+      "id": "1f8cba68-9d2f-462f-bff4-edec50f73452",
+      "name": "Log Error",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XcjATwKF9aykS5FZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1UN2pfOeZovjcNSDwihZ3AFcCl_zY64pem8yE9oXYTqg",
+          "mode": "list",
+          "cachedResultName": "Reporte interacción",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UN2pfOeZovjcNSDwihZ3AFcCl_zY64pem8yE9oXYTqg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1589628461,
+          "mode": "list",
+          "cachedResultName": "Fallback switch",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UN2pfOeZovjcNSDwihZ3AFcCl_zY64pem8yE9oXYTqg/edit#gid=1589628461"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('yyyy-MM-dd HH:mm') }}\n",
+            "Workflow Id": "={{ $('Manager AI Agent1').item.json.output.worker }}",
+            "Solicitud": "={{ $('Manager AI Agent1').item.json.output.request }}",
+            "Respuesta": "={{ $json.output.intent }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Workflow Id",
+              "displayName": "Workflow Id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Solicitud",
+              "displayName": "Solicitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Respuesta",
+              "displayName": "Respuesta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        0,
+        464
+      ],
+      "id": "6c13fd3c-3067-43c3-9ca1-4218bc332967",
+      "name": "Reporte Fallback",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XcjATwKF9aykS5FZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1UN2pfOeZovjcNSDwihZ3AFcCl_zY64pem8yE9oXYTqg",
+          "mode": "list",
+          "cachedResultName": "Reporte interacción",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UN2pfOeZovjcNSDwihZ3AFcCl_zY64pem8yE9oXYTqg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Reportes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UN2pfOeZovjcNSDwihZ3AFcCl_zY64pem8yE9oXYTqg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Workflow Id": "={{ $json['Workflow id'] }}",
+            "Fecha": "={{ $json.Fecha }}",
+            "Solicitud": "={{ $json.Solicitud }}",
+            "Status": "={{ $json.Status }}",
+            "Respuesta": "={{ $json.Respuesta }}",
+            "Herramienta Utilizada": "={{ $json['Herramienta utilizada'] }}",
+            "Estado de solicitud": "={{ $json['Estado de solicitud '] }}",
+            "Dettale estado": "={{ $json['Detalle Estado'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Workflow Id",
+              "displayName": "Workflow Id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Solicitud",
+              "displayName": "Solicitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Respuesta",
+              "displayName": "Respuesta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Herramienta Utilizada",
+              "displayName": "Herramienta Utilizada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado de solicitud",
+              "displayName": "Estado de solicitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Dettale estado",
+              "displayName": "Dettale estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        272
+      ],
+      "id": "98fa1c9c-ed0a-477d-86c0-baecec6c795a",
+      "name": "Reporte interacción1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XcjATwKF9aykS5FZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1UN2pfOeZovjcNSDwihZ3AFcCl_zY64pem8yE9oXYTqg",
+          "mode": "list",
+          "cachedResultName": "Reporte interacción",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UN2pfOeZovjcNSDwihZ3AFcCl_zY64pem8yE9oXYTqg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Reportes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1UN2pfOeZovjcNSDwihZ3AFcCl_zY64pem8yE9oXYTqg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Workflow Id": "={{ $json['Workflow id'] }}",
+            "Fecha": "={{ $json.Fecha }}",
+            "Solicitud": "={{ $json.Solicitud }}",
+            "Status": "={{ $json.Status }}",
+            "Respuesta": "={{ $json.Respuesta }}",
+            "Herramienta Utilizada": "={{ $json['Herramienta utilizada'] }}",
+            "Estado de solicitud": "={{ $json['Estado de solicitud '] }}",
+            "Dettale estado": "={{ $json['Detalle Estado'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Workflow Id",
+              "displayName": "Workflow Id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Solicitud",
+              "displayName": "Solicitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Respuesta",
+              "displayName": "Respuesta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Herramienta Utilizada",
+              "displayName": "Herramienta Utilizada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado de solicitud",
+              "displayName": "Estado de solicitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Dettale estado",
+              "displayName": "Dettale estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        80
+      ],
+      "id": "c259e4a3-f0bb-4aa4-bcef-f0a3f7f789fa",
+      "name": "Reporte interacción",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XcjATwKF9aykS5FZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f4ca2036-395f-4c1d-8d10-6f6865d2c408",
+              "name": "Respuesta",
+              "value": "={{ $json.Respuesta }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        240,
+        464
+      ],
+      "id": "c4accf97-1e0a-434c-b2d6-5b4834177fa5",
+      "name": "Respuesta Fallback"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0128cee7-71b6-4637-a96e-fabb88bbf0d7",
+              "name": "Respuesta",
+              "value": "={{ $json.Respuesta }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        448,
+        272
+      ],
+      "id": "adab548b-4278-4173-a307-3552d10fd880",
+      "name": "Respuesta W2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0128cee7-71b6-4637-a96e-fabb88bbf0d7",
+              "name": "Respuesta",
+              "value": "={{ $json.Respuesta }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        448,
+        80
+      ],
+      "id": "2cde7a5b-534e-4926-874e-7e92d497f627",
+      "name": "Respuesta W1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Manager AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Manager AI Agent1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar worker Asistente de turnos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ejecutar worker Liquidación de sueldos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reporte Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Manager AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar worker Asistente de turnos": {
+      "main": [
+        [
+          {
+            "node": "Reporte interacción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar worker Liquidación de sueldos": {
+      "main": [
+        [
+          {
+            "node": "Reporte interacción1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reporte interacción1": {
+      "main": [
+        [
+          {
+            "node": "Respuesta W2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reporte interacción": {
+      "main": [
+        [
+          {
+            "node": "Respuesta W1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reporte Fallback": {
+      "main": [
+        [
+          {
+            "node": "Respuesta Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "aef559c9-4f97-49bc-a3a1-2db309042dc0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7260c5e180f34b5cab8e39baae43ae9115a18b483b3b239c4e5fa9826c7548db"
+  },
+  "nodeGroups": [],
+  "id": "C2UycFHkF7OaNIac",
+  "tags": []
+}

@@ -1,0 +1,398 @@
+{
+  "name": "worker2_modulo2_provenzano_paula",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"worker\": \"Asistente de turnos\",\n  \"intent\": \"turnos_search\",\n  \"promotor_id\": \"\",\n  \"promotor_query\": \"Camila Lopez\",\n  \"request\": \"Consultar próximas jornadas\",\n  \"original_input\": \"Hola soy Camila Lopez, quería saber cuántas jornadas de trabajo tengo en octubre?\"\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        96
+      ],
+      "id": "57c2e113-a87d-4a89-9f2e-05fdf968040e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"promotor_query\": {{ JSON.stringify($json.promotor_query) }},\n  \"request\": {{ JSON.stringify($json.request) }},\n  \"original_input\": {{ JSON.stringify($json.original_input) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        96
+      ],
+      "id": "6e65c7b7-6afb-461b-8f88-9a0320b5271f",
+      "name": "Petición",
+      "notesInFlow": true,
+      "notes": "Limpiar solo los campos relevantes para el Agente"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Consulta: {{ $json.request }}\n\nPromotor:\n{{ $json.promotor_query }}\n\nMensaje original:\n{{ $json.original_input }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=##ROL\nSos \"Liquidación de sueldos\", un Worker especialista en el pago de los promotores de la agencia de marketing. Respondés las consultas de los promotores sobre lo que cobran de forma cordial, clara y breve, en español.\n\n##OBJETIVO\nA partir de la solicitud recibida desde el Manager, consultá Airtable y devolvé la información de liquidación que corresponda al promotor y al período consultado.\n\n##FECHA ACTUAL\nHoy es {{ $now.setZone('America/Argentina/Buenos_Aires').setLocale('es').toFormat(\"cccc d 'de' LLLL 'de' yyyy\") }} (ISO: {{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('yyyy-MM-dd') }}).\nMes en curso: {{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('yyyy-MM') }}.\nUsá esta fecha para interpretar \"este mes\", \"el mes pasado\", \"septiembre\", \"lo último que trabajé\", etc.\n\n##ALCANCE\nSolo respondés sobre:\n- Valor de la hora de trabajo.\n- Días y horas trabajadas que se liquidan en un período.\n- Total a cobrar por un período.\n- Fecha estimada de pago y estado del pago.\nPara cualquier otro tema respondé: \"Lo siento, solo puedo responder consultas sobre el valor de tu hora, lo que vas a cobrar y la fecha de pago. Para otras consultas, comunicate con tu supervisor.\"\nSi la consulta es sobre jornadas, horarios, lugar o uniforme, tratala como fuera de alcance: el Manager la deriva a otro Worker.\n\n##HERRAMIENTA\nTenés la herramienta \"Buscar liquidaciones en Airtable\". Necesita:\n- nombre_promotor: nombre y apellido tal como lo escribió el promotor.\n- periodo: mes a consultar en formato YYYY-MM, o vacío (\"\") para traer todas las liquidaciones del promotor.\n\nCómo elegir el período:\n- Mes nombrado (\"septiembre\", \"agosto\"): ese mes del año actual, salvo que sea posterior al mes en curso; en ese caso, del año anterior. Ej: \"septiembre\" → 2026-09.\n- \"este mes\": el mes en curso.\n- \"el mes pasado\": el mes anterior al mes en curso.\n- Sin mes indicado (\"¿cuánto cobro?\", \"¿cuándo me pagan?\"): periodo vacío, y respondé con la liquidación más reciente.\n- \"¿cuánto me pagan la hora?\": periodo vacío, y respondé con el valor de la liquidación más reciente.\n\nAnte cualquier consulta sobre pagos, SIEMPRE llamá a la herramienta antes de responder. Nunca respondas de memoria ni a partir de mensajes anteriores de la conversación: los valores pueden haber cambiado.\nSi el promotor no dio su nombre y apellido, pedíselos antes de buscar.\n\n##CÓMO LEER EL RESULTADO\nCada fila es la liquidación de un promotor en un mes, con: Nombre y apellido, Clave mes (YYYY-MM), Costo por hora, Días trabajados, Horas trabajadas, Total a cobrar, Fecha estimada de pago y Estado de pago.\n- Sin resultados: respondé \"No encuentro una liquidación a tu nombre para ese período. Si creés que es un error, comunicate con tu supervisor.\"\n- Todas las filas con el mismo \"Nombre y apellido\": son las liquidaciones de esa persona. Respondé con la que corresponde al período pedido.\n- Filas con distintos \"Nombre y apellido\" (por ejemplo, dos personas con el mismo nombre): no elijas ni mezcles. Pedí el apellido completo.\n- Si el período consultado es el mes en curso, aclará que el total es parcial: incluye solo las jornadas trabajadas hasta hoy y puede cambiar hasta el cierre del mes.\n- Si algún campo viene vacío (por ejemplo, todavía no hay fecha estimada de pago), decilo así: \"todavía no está definida\". No lo completes ni lo estimes.\n\n##CÁLCULOS\nLos importes ya vienen calculados en Airtable: Horas trabajadas = Días trabajados × 6 h, y Total a cobrar = Horas trabajadas × Costo por hora.\nNo recalcules ni redondees por tu cuenta. Copiá los valores tal como los devuelve la herramienta.\nSolo podés sumar si el promotor pide expresamente el total de varios meses, y en ese caso mostrá también el detalle de cada mes.\n\n##QUÉ PODÉS COMPARTIR\nSolo período, valor de la hora, días trabajados, horas trabajadas, total a cobrar, fecha estimada de pago y estado del pago del propio promotor.\nNunca compartas datos de otros promotores, identificadores internos, teléfonos ni mails.\n\n##RESTRICCIONES\n1. SIEMPRE debés consultar la herramienta de Airtable antes de responder.\n2. No realices ninguna modificación en Airtable. Esta herramienta es exclusivamente de lectura.\n3. NUNCA inventes, estimes ni proyectes montos, valores de hora o fechas de pago que no devuelva la herramienta.\n4. NUNCA compartas datos de otros promotores, identificadores internos, teléfonos ni mails.\n5. No des opiniones ni promesas sobre aumentos, adelantos, reclamos o diferencias de pago. Ante eso, derivá al supervisor.\n\n##FORMATO DE SALIDA\nDevolvé una respuesta estructurada para que pueda ser consumida por el Workflow Manager.\nTu salida tiene tres partes, y el sistema las separa:\n\n1) status: lo utiliza el Manager para saber si la consulta fue exitosa o no.\n- status.enum: \"success\", \"not_found\", \"error\"\nSi ninguna liquidación coincide razonablemente con la consulta, devolvé status = not_found.\nSi Airtable falla o no devuelve información utilizable, devolvé status = error.\n\n2) respuesta.mensaje: el único texto que ve el promotor.\nSaludá por el nombre y presentá los datos en líneas cortas. Montos en pesos con punto de miles (ej: $ 45.000) y fechas en formato DD/MM. Por ejemplo:\n\"Hola Camila, esta es tu liquidación de septiembre:\n- Días trabajados: 12 (72 h)\n- Valor de la hora: $ 4.500\n- Total a cobrar: $ 324.000\n- Fecha estimada de pago: 10/10 · Estado: Pendiente\"\nSi la consulta es puntual (solo el valor de la hora o solo la fecha de pago), respondé solo ese dato, en una o dos líneas. Sin emojis. Nunca menciones el reporte dentro del mensaje.\n\n3) reporte_interaccion: registro interno para el administrador, que el promotor nunca ve.\n- usuario_promotor: nombre del promotor identificado, o \"Sin identificar\".\n- tipo_consulta: breve, por ejemplo \"Total a cobrar\", \"Valor hora\", \"Fecha de pago\", \"Estado de pago\", \"Fuera de alcance\".\n- herramientas_utilizadas: [\"Airtable\"] solo si la herramienta se ejecutó en este turno; si no, [].\n- estado_solicitud: uno de \"Resuelto\", \"No encontrado\", \"Fuera de alcance\", \"Identificación requerida\", \"Identificación ambigua\", \"Error de herramienta\".\n- detalle_breve: qué pasó, en una o dos líneas, de forma factual (incluí el período consultado).\n- limitaciones: limitaciones reales encontradas (por ejemplo \"Total parcial, mes en curso\" o \"Sin fecha de pago cargada\"), o \"Ninguna\".\nNo declares \"Resuelto\" si la consulta no se resolvió, ni que usaste una herramienta que no se ejecutó.\n\n##PRINCIPIO\nIdentificar → consultar la herramienta → responder solo con lo que devolvió. Nunca inventes montos, valores de hora ni fechas de pago.",
+          "maxIterations": 8
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        512,
+        96
+      ],
+      "id": "5bbb2e64-5d6e-4561-8c7b-4d38cc49a86a",
+      "name": "AI Agent",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        336
+      ],
+      "id": "092526e4-56b1-4eb8-9491-4e64acea793e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "MklieurBXXi4oDmT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Busca las liquidaciones de sueldo de un promotor (una fila por mes).\nUsala SIEMPRE que un promotor consulte por el valor de su hora, cuánto va a cobrar, la fecha de pago o el estado del pago.\nParámetros:\n- nombre_promotor: nombre y apellido tal como lo escribió el promotor.\n- periodo: mes en formato YYYY-MM, o vacío para traer todos los meses.\nDevuelve: Nombre y apellido, Clave mes, Costo por hora, Días trabajados, Horas trabajadas, Total a cobrar, Fecha estimada de pago y Estado de pago.\nSi no devuelve filas, no hay liquidación para ese nombre en ese período (o el nombre no coincide).",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appQGJbhbz3yrZCzT",
+          "mode": "id"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblU6BHuyr7GRV1sv",
+          "mode": "list",
+          "cachedResultName": "Liquidaciones",
+          "cachedResultUrl": "https://airtable.com/appQGJbhbz3yrZCzT/tblU6BHuyr7GRV1sv"
+        },
+        "filterByFormula": "=AND(\n  LEN(\"{{ $fromAI('nombre_promotor', 'Nombre y apellido del promotor tal como lo escribio, ej: Camila Benitez', 'string') }}\") > 3,\n  FIND(\n    SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(LOWER(\"{{ $fromAI('nombre_promotor', 'Nombre y apellido del promotor tal como lo escribio, ej: Camila Benitez', 'string') }}\"), \"á\", \"a\"), \"é\", \"e\"), \"í\", \"i\"), \"ó\", \"o\"), \"ú\", \"u\"), \"ü\", \"u\"),\n    SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(LOWER({Nombre y apellido} & \"\"), \"á\", \"a\"), \"é\", \"e\"), \"í\", \"i\"), \"ó\", \"o\"), \"ú\", \"u\"), \"ü\", \"u\")\n  ),\n  OR(\n    \"{{ $fromAI('periodo', 'Mes a consultar en formato YYYY-MM, o vacio para traer todas las liquidaciones', 'string') }}\" = \"\",\n    FIND(\"{{ $fromAI('periodo', 'Mes a consultar en formato YYYY-MM, o vacio para traer todas las liquidaciones', 'string') }}\", {Clave mes} & \"\")\n  ),\n  {Estado promotor} & \"\" = \"Activo\"\n)",
+        "options": {
+          "fields": [
+            "Nombre y apellido",
+            "Clave mes",
+            "Costo por hora",
+            "Días trabajados",
+            "Horas trabajadas",
+            "Total a cobrar",
+            "Fecha estimada de pago",
+            "Estado de pago"
+          ]
+        },
+        "sort": {
+          "property": [
+            {
+              "field": "Clave mes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        592,
+        416
+      ],
+      "id": "0900c7c1-1195-4889-8029-fcf9ffec310b",
+      "name": "Buscar liquidaciones en Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "73yJIQMQ7mt28whT",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"status\": {\n      \"type\": \"string\",\n      \"enum\": [\"success\", \"not_found\", \"error\"],\n      \"description\": \"Estado del procesamiento: success, not_found o error\"\n    },\n    \"respuesta\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mensaje\": {\n          \"type\": \"string\",\n          \"description\": \"Mensaje final para el promotor\"\n        }\n      },\n      \"required\": [\"mensaje\"]\n    },\n    \"reporte_interaccion\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"usuario_promotor\": {\n          \"type\": \"string\",\n          \"description\": \"Nombre del promotor, o Sin identificar\"\n        },\n        \"tipo_consulta\": { \"type\": \"string\" },\n        \"herramientas_utilizadas\": {\n          \"type\": \"array\",\n          \"items\": { \"type\": \"string\" }\n        },\n        \"estado_solicitud\": {\n          \"type\": \"string\",\n          \"enum\": [\"Resuelto\", \"No encontrado\", \"Fuera de alcance\", \"Identificación requerida\", \"Identificación ambigua\", \"Error de herramienta\"],\n          \"description\": \"Estado final de la solicitud\"\n        },\n        \"detalle_breve\": { \"type\": \"string\" },\n        \"limitaciones\": {\n          \"type\": \"string\",\n          \"description\": \"Limitaciones reales, o Ninguna\"\n        }\n      },\n      \"required\": [\n        \"usuario_promotor\",\n        \"tipo_consulta\",\n        \"herramientas_utilizadas\",\n        \"estado_solicitud\",\n        \"detalle_breve\",\n        \"limitaciones\"\n      ]\n    }\n  },\n  \"required\": [\"status\", \"respuesta\", \"reporte_interaccion\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        720,
+        336
+      ],
+      "id": "5a490471-48cc-479a-9632-683d4876be7a",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f982f560-336a-45d5-a0da-1717881e23b2",
+              "name": "Workflow id",
+              "value": "={{ $workflow.name }}\n{{ $workflow.id }}",
+              "type": "string"
+            },
+            {
+              "id": "144139e7-6757-4130-af3d-c4f52e7ede7c",
+              "name": "Fecha",
+              "value": "={{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('yyyy-MM-dd HH:mm') }}",
+              "type": "string"
+            },
+            {
+              "id": "1a9767e3-b534-417b-97b6-da1d164f3421",
+              "name": "Solicitud",
+              "value": "={{ $('Petición').item.json.request }}",
+              "type": "string"
+            },
+            {
+              "id": "019731e1-8155-4038-8984-3ba9b1c9a414",
+              "name": "Status",
+              "value": "={{ $json.output.status }}",
+              "type": "string"
+            },
+            {
+              "id": "6bbacf6d-af0c-4a9c-ba7a-2d04ceecd46e",
+              "name": "Respuesta",
+              "value": "={{ $json.output.respuesta.mensaje }}",
+              "type": "string"
+            },
+            {
+              "id": "39f92a90-067f-457d-9551-7c00ccbbf2d6",
+              "name": "Herramienta utilizada",
+              "value": "={{ $json.output.reporte_interaccion.herramientas_utilizadas }}",
+              "type": "string"
+            },
+            {
+              "id": "237eb06d-e22e-4915-bfa8-e93ed26ad7da",
+              "name": "Estado de solicitud ",
+              "value": "={{ $json.output.reporte_interaccion.estado_solicitud }}",
+              "type": "string"
+            },
+            {
+              "id": "587c1e11-b8dc-4c3e-8785-11f9c70e0eb5",
+              "name": "Detalle Estado",
+              "value": "={{ $json.output.reporte_interaccion.detalle_breve }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        912,
+        0
+      ],
+      "id": "1dc4cf77-6243-40d5-b68c-b1ffd5e9d40a",
+      "name": "Respuesta"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg",
+          "mode": "list",
+          "cachedResultName": "Log error de N8N",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Error",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Error": "={{ $json.error }}",
+            "Solicitud": "={{ $json.promotor_query }}, {{ $json.request }}",
+            "Fecha": "={{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('yyyy-MM-dd HH:mm') }}\n",
+            "Workflow Id": "={{ $workflow.name }}\n{{ $workflow.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Workflow Id",
+              "displayName": "Workflow Id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Solicitud",
+              "displayName": "Solicitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Error",
+              "displayName": "Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        240
+      ],
+      "id": "6942d428-3262-4191-adea-0f3799cd21ff",
+      "name": "Log error",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XcjATwKF9aykS5FZ",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Petición",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Petición": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar liquidaciones en Airtable": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "dc1c7496-d85e-4d6c-a4e4-da7cbee69e5f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "7260c5e180f34b5cab8e39baae43ae9115a18b483b3b239c4e5fa9826c7548db"
+  },
+  "nodeGroups": [],
+  "id": "q7JRo4n4f0Blbb69",
+  "tags": []
+}

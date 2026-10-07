@@ -1,0 +1,399 @@
+{
+  "name": "worker1_modulo2_provenzano_paula",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"worker\": \"Asistente de turnos\",\n  \"intent\": \"turnos_search\",\n  \"promotor_id\": \"\",\n  \"promotor_query\": \"Camila Lopez\",\n  \"request\": \"Consultar próximas jornadas\",\n  \"original_input\": \"Hola soy Camila Lopez, quería saber cuántas jornadas de trabajo tengo en octubre?\"\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        96
+      ],
+      "id": "1f3edead-cc5b-4f4c-9ffb-e0a89ea8c7b8",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Consulta: {{ $json.request }}\n\nPromotor:\n{{ $json.promotor_query }}\n\nMensaje original:\n{{ $json.original_input }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=##ROL\nSos \"Asistente de turnos\", un Worker especialista en la planificación laboral de los promotores de la agencia de marketing. Respondés las consultas de los promotores sobre sus jornadas de trabajo de forma cordial, clara y breve, en español.\n\n##OBJETIVO\nA partir de la solicitud recibida desde el Manager, consultá Airtable y buscá la información que mejor coincida con lo solicitado.\n\n##FECHA ACTUAL\nHoy es {{ $now.setZone('America/Argentina/Buenos_Aires').setLocale('es').toFormat(\"cccc d 'de' LLLL 'de' yyyy\") }} (ISO: ).\nUsá esta fecha para interpretar \"hoy\", \"mañana\", \"esta semana\", \"este mes\", \"el mes que viene\", etc.\n\n##ALCANCE\nSolo respondés sobre: días trabajados, próximas jornadas, horarios, lugar o dirección de trabajo y uniforme.\nPara cualquier otro tema respondé: \"Lo siento, solo puedo responder consultas sobre tus jornadas, horarios, lugar de trabajo y uniforme. Para otras consultas, comunicate con tu supervisor.\"\n\n##HERRAMIENTA\nTenés la herramienta \"Buscar jornadas en Airtable\". Necesita:\n- nombre_promotor: nombre y apellido tal como lo escribió el promotor.\n- fecha_desde y fecha_hasta: rango de fechas en formato YYYY-MM-DD.\n\nCómo armar el rango:\n- \"octubre\" o \"este mes\" (si estamos en octubre de 2026): 2026-10-01 a 2026-10-31.\n- \"esta semana\": del lunes al domingo de la semana actual.\n- \"mi próximo turno\": desde hoy hasta 60 días después.\n- \"qué días trabajé\": desde hoy hasta 60 días antes.\n\nAnte cualquier consulta sobre jornadas, SIEMPRE llamá a la herramienta antes de responder. Nunca respondas de memoria ni a partir de mensajes anteriores de la conversación: los datos pueden haber cambiado.\nSi el promotor no dio su nombre y apellido, pedíselos antes de buscar.\n\n##CÓMO LEER EL RESULTADO\n- Sin resultados: respondé \"No encuentro jornadas a tu nombre para ese período. Si creés que es un error, comunicate con tu supervisor.\"\n- Todas las filas con el mismo \"Nombre promotor\": son las jornadas de esa persona. Respondé con ellas.\n- Filas con distintos \"Nombre promotor\" (por ejemplo, dos personas con el mismo nombre): no elijas ni mezcles. Pedí el apellido completo.\n\n##QUÉ PODÉS COMPARTIR\nSolo día y fecha, horario, lugar, dirección, zona, uniforme y situación (Trabajada / Hoy / Pendiente). Nunca compartas datos de otros promotores, identificadores internos, teléfonos ni mails.\n\n##RESTRICCIONES\n1. SIEMPRE debés consultar la herramienta de Airtable antes de responder.\n2. No realices ninguna modificación en Airtable. Esta herramienta es exclusivamente de lectura.\n3- NUNCA inventes información que no se encuentre al consultar la herramienta de Airtable.\n4. NUNCA compartas datos de otros promotores, identificadores internos, teléfonos ni mails.\n\n\n##FORMATO DE SALIDA\nDevolvé una respuesta estructurada para que pueda ser consumida por el Workflow Manager.\nTu salida tiene tres partes, y el sistema las separa:\n\n1) status: lo utiliza el Manager para saber si la consulta fue exitosa o no.\n- status.enum: \"success\", \"not_found\", \"error\"\nSi ningún registro coincide razonablemente con la consulta, devolvé status = not_found.\nSi Airtable falla o no devuelve información utilizable, devolvé status = error.\n\n2) respuesta.mensaje: el único texto que ve el promotor.\nSaludá por el nombre y listá las jornadas en orden cronológico, una por línea. Por ejemplo:\n\"Hola Camila, estas son tus jornadas de octubre:\n• Lunes 06/10 · 10 a 16 h · Nombre del lugar (dirección) · Uniforme: nombre del uniforme\"\nSi el lugar o el uniforme se repiten en todas las jornadas, podés mencionarlos una sola vez al final. Sin emojis. Nunca menciones el reporte dentro del mensaje.\n\n3) reporte_interaccion: registro interno para el administrador, que el promotor nunca ve.\n- usuario_promotor: nombre del promotor identificado, o \"Sin identificar\".\n- tipo_consulta: breve, por ejemplo \"Jornadas del mes\", \"Próximo turno\", \"Lugar de trabajo\", \"Uniforme\", \"Fuera de alcance\".\n- herramientas_utilizadas: [\"Airtable\"] solo si la herramienta se ejecutó en este turno; si no, [].\n- estado_solicitud: uno de \"Resuelto\", \"No encontrado\", \"Fuera de alcance\", \"Identificación requerida\", \"Identificación ambigua\", \"Error de herramienta\".\n- detalle_breve: qué pasó, en una o dos líneas, de forma factual.\n- limitaciones: limitaciones reales encontradas, o \"Ninguna\".\nNo declares \"Resuelto\" si la consulta no se resolvió, ni que usaste una herramienta que no se ejecutó.\n\n##PRINCIPIO\nIdentificar → consultar la herramienta → responder solo con lo que devolvió. Nunca inventes jornadas, lugares, horarios ni uniformes.",
+          "maxIterations": 10
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        512,
+        96
+      ],
+      "id": "9ac422d0-d347-419a-adc9-4a08ee2b35cb",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Busca las jornadas de trabajo de un promotor en la base de la agencia.\n\nUsala SIEMPRE que un promotor consulte por sus días trabajados, próximas jornadas, horarios, lugar de trabajo o uniforme.\n\nParámetros:\n- nombre_promotor: nombre y apellido tal como lo escribió el promotor (ej: Camila Benitez).\n- fecha_desde / fecha_hasta: rango de fechas a consultar, en formato YYYY-MM-DD, ambos inclusive.\n\nDevuelve una fila por jornada con: Día, Fecha, Hora de inicio, Hora de fin, Lugar, Dirección, Zona, Uniforme (nombre), Uniforme (descripción), Situación y Nombre promotor.\nSi no devuelve filas, no hay jornadas para ese nombre en ese período (o el nombre no coincide).",
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "appQGJbhbz3yrZCzT"
+        },
+        "table": {
+          "__rl": true,
+          "cachedResultName": "Jornadas",
+          "mode": "id",
+          "value": "tblAx7b0Mh1xITTXm"
+        },
+        "filterByFormula": "=AND(\n  LEN(\"{{ $fromAI('nombre_promotor', 'Nombre y apellido del promotor tal como lo escribio, ej: Camila Benitez', 'string') }}\") > 3,\n  FIND(\n    SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(LOWER(\"{{ $fromAI('nombre_promotor', 'Nombre y apellido del promotor tal como lo escribio, ej: Camila Benitez', 'string') }}\"), \"á\", \"a\"), \"é\", \"e\"), \"í\", \"i\"), \"ó\", \"o\"), \"ú\", \"u\"), \"ü\", \"u\"),\n    SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(LOWER({Nombre promotor} & \"\"), \"á\", \"a\"), \"é\", \"e\"), \"í\", \"i\"), \"ó\", \"o\"), \"ú\", \"u\"), \"ü\", \"u\")\n  ),\n  NOT(IS_BEFORE({Fecha}, DATETIME_PARSE(\"{{ $fromAI('fecha_desde', 'Inicio del rango a consultar, formato YYYY-MM-DD', 'string') }}\", \"YYYY-MM-DD\"))),\n  NOT(IS_AFTER({Fecha}, DATETIME_PARSE(\"{{ $fromAI('fecha_hasta', 'Fin del rango a consultar, formato YYYY-MM-DD, inclusive', 'string') }}\", \"YYYY-MM-DD\"))),\n  {Estado promotor} & \"\" = \"Activo\"\n)",
+        "options": {
+          "fields": [
+            "Día",
+            "Fecha",
+            "Hora de inicio",
+            "Hora de fin",
+            "Lugar",
+            "Dirección",
+            "Zona",
+            "Uniforme (nombre)",
+            "Uniforme (descripción)",
+            "Situación",
+            "Nombre promotor"
+          ]
+        },
+        "sort": {
+          "property": [
+            {
+              "field": "Fecha"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtableTool",
+      "typeVersion": 2.2,
+      "position": [
+        592,
+        448
+      ],
+      "id": "3cbaa687-829e-42e2-b8b5-2b7bc8ebf663",
+      "name": "Buscar jornadas en Airtable",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "73yJIQMQ7mt28whT",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        336
+      ],
+      "id": "eb8baf5a-e9dd-41c9-9f9d-604e83d6ec48",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "MklieurBXXi4oDmT",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "={\n  \"type\": \"object\",\n  \"properties\": {\n    \"status\": {\n      \"type\": \"string\",\n      \"enum\": [\"success\", \"not_found\", \"error\"],\n      \"description\": \"Estado del procesamiento: success, not_found o error\"\n    },\n    \"respuesta\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"mensaje\": {\n          \"type\": \"string\",\n          \"description\": \"Mensaje final para el promotor\"\n        }\n      },\n      \"required\": [\"mensaje\"]\n    },\n    \"reporte_interaccion\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"usuario_promotor\": {\n          \"type\": \"string\",\n          \"description\": \"Nombre del promotor, o Sin identificar\"\n        },\n        \"tipo_consulta\": { \"type\": \"string\" },\n        \"herramientas_utilizadas\": {\n          \"type\": \"array\",\n          \"items\": { \"type\": \"string\" }\n        },\n        \"estado_solicitud\": {\n          \"type\": \"string\",\n          \"enum\": [\"Resuelto\", \"No encontrado\", \"Fuera de alcance\", \"Identificación requerida\", \"Identificación ambigua\", \"Error de herramienta\"],\n          \"description\": \"Estado final de la solicitud\"\n        },\n        \"detalle_breve\": { \"type\": \"string\" },\n        \"limitaciones\": {\n          \"type\": \"string\",\n          \"description\": \"Limitaciones reales, o Ninguna\"\n        }\n      },\n      \"required\": [\n        \"usuario_promotor\",\n        \"tipo_consulta\",\n        \"herramientas_utilizadas\",\n        \"estado_solicitud\",\n        \"detalle_breve\",\n        \"limitaciones\"\n      ]\n    }\n  },\n  \"required\": [\"status\", \"respuesta\", \"reporte_interaccion\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        720,
+        336
+      ],
+      "id": "913445c7-63fe-47eb-b99d-e68f5521cc6b",
+      "name": "Structured Output Parser",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"promotor_query\": {{ JSON.stringify($json.promotor_query) }},\n  \"request\": {{ JSON.stringify($json.request) }},\n  \"original_input\": {{ JSON.stringify($json.original_input) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        96
+      ],
+      "id": "840838b5-c24d-46e3-b63a-4d320e66d387",
+      "name": "Petición",
+      "notesInFlow": true,
+      "notes": "Limpiar solo los campos relevantes para el Agente"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f982f560-336a-45d5-a0da-1717881e23b2",
+              "name": "Workflow id",
+              "value": "={{ $workflow.name }}\n{{ $workflow.id }}",
+              "type": "string"
+            },
+            {
+              "id": "144139e7-6757-4130-af3d-c4f52e7ede7c",
+              "name": "Fecha",
+              "value": "={{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('yyyy-MM-dd HH:mm') }}",
+              "type": "string"
+            },
+            {
+              "id": "1a9767e3-b534-417b-97b6-da1d164f3421",
+              "name": "Solicitud",
+              "value": "={{ $('Petición').item.json.request }}",
+              "type": "string"
+            },
+            {
+              "id": "019731e1-8155-4038-8984-3ba9b1c9a414",
+              "name": "Status",
+              "value": "={{ $json.output.status }}",
+              "type": "string"
+            },
+            {
+              "id": "6bbacf6d-af0c-4a9c-ba7a-2d04ceecd46e",
+              "name": "Respuesta",
+              "value": "={{ $json.output.respuesta.mensaje }}",
+              "type": "string"
+            },
+            {
+              "id": "39f92a90-067f-457d-9551-7c00ccbbf2d6",
+              "name": "Herramienta utilizada",
+              "value": "={{ $json.output.reporte_interaccion.herramientas_utilizadas }}",
+              "type": "string"
+            },
+            {
+              "id": "237eb06d-e22e-4915-bfa8-e93ed26ad7da",
+              "name": "Estado de solicitud ",
+              "value": "={{ $json.output.reporte_interaccion.estado_solicitud }}",
+              "type": "string"
+            },
+            {
+              "id": "587c1e11-b8dc-4c3e-8785-11f9c70e0eb5",
+              "name": "Detalle Estado",
+              "value": "={{ $json.output.reporte_interaccion.detalle_breve }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        912,
+        0
+      ],
+      "id": "d486519d-7316-4ddf-b29f-fa35c5339ceb",
+      "name": "Respuesta"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg",
+          "mode": "list",
+          "cachedResultName": "Log error de N8N",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Error",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GRZDzRi0WL-2Jt9KoBQxwaORq2cx78CMf4RHkTCxKkg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Error": "={{ $json.error }}",
+            "Solicitud": "={{ $json.promotor_query }}, {{ $json.request }}",
+            "Fecha": "={{ $now.setZone('America/Argentina/Buenos_Aires').toFormat('yyyy-MM-dd HH:mm') }}\n",
+            "Workflow Id": "={{ $workflow.name }}\n{{ $workflow.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Workflow Id",
+              "displayName": "Workflow Id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Solicitud",
+              "displayName": "Solicitud",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Error",
+              "displayName": "Error",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        912,
+        192
+      ],
+      "id": "12cb66d0-ca09-4109-9752-34509b2e145a",
+      "name": "Log error",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "XcjATwKF9aykS5FZ",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Petición",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar jornadas en Airtable": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Petición": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "a7495ead-108c-49d1-8dc7-e8d8d813ac28",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "instanceId": "7260c5e180f34b5cab8e39baae43ae9115a18b483b3b239c4e5fa9826c7548db"
+  },
+  "nodeGroups": [],
+  "id": "tFaPEvDhJII5naKp",
+  "tags": []
+}
